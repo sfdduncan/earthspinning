@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Create a rotating globe</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
+<style>
+body { margin: 0; padding: 0; }
+#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+</style>
+</head>
+<body>
+<style>
+   
+</style>
+<div id="map"></div>
+<button id="btn-spin">Pause rotation</button>
+<script>
+    mapboxgl.accessToken = 'pk.eyJ1Ijoic2ZkdW5jYW4iLCJhIjoiY2x2Z3QybHh2MHlwcTJpczJyejAyYWVpNyJ9.DLToR14vGnafkx-pCGj6KA';
+  
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/sfduncan/cm3gqxhhp003j01qkamphbcpc',
+      projection: 'globe', // Use globe projection
+      zoom: 2.00,
+      center: [116.474, 12.464]
+    });
+  
+    map.on('load', () => {
+      // Add vector tile source
+      map.addSource('lines', {
+        type: 'vector',
+        url: 'mapbox://sfduncan.6l819v5p' // Replace with your tileset ID
+      });
+  
+      // Add line layer with dasharray animation
+      map.addLayer({
+        id: 'animated-line',
+        type: 'line',
+        source: 'lines',
+        'source-layer': 'philippineslines', // Confirm source-layer name
+        paint: {
+          'line-color': '#ff0000',
+          'line-width': 3,
+          'line-dasharray': [2, 4], // Initial dash pattern
+        },
+      });
+  
+      // Line animation
+      let dashOffset = 0;
+      function animateDashArray() {
+        dashOffset = (dashOffset + 1) % 100; // Loop dash offset
+        map.setPaintProperty('animated-line', 'line-dasharray', [dashOffset, 4]);
+        requestAnimationFrame(animateDashArray);
+      }
+      animateDashArray(); // Start line animation
+  
+      // Globe rotation variables
+      const secondsPerRevolution = 90;
+      const maxSpinZoom = 5;
+      const slowSpinZoom = 3;
+      let userInteracting = false;
+      let spinEnabled = true;
+  
+      function spinGlobe() {
+        const zoom = map.getZoom();
+        if (spinEnabled && !userInteracting && zoom < maxSpinZoom) {
+          let distancePerSecond = 360 / secondsPerRevolution;
+          if (zoom > slowSpinZoom) {
+            const zoomDif = (maxSpinZoom - zoom) / (maxSpinZoom - slowSpinZoom);
+            distancePerSecond *= zoomDif;
+          }
+          const center = map.getCenter();
+          center.lng -= distancePerSecond;
+  
+          // Smooth animation
+          map.easeTo({
+            center,
+            duration: 1000,
+            easing: (n) => n,
+          });
+  
+          // Re-trigger after animation
+          setTimeout(spinGlobe, 1000);
+        }
+      }
+  
+      map.on('mousedown', () => (userInteracting = true));
+      map.on('mouseup', () => {
+        userInteracting = false;
+        spinGlobe();
+      });
+      map.on('dragend', () => {
+        userInteracting = false;
+        spinGlobe();
+      });
+  
+      document.getElementById('btn-spin').addEventListener('click', (e) => {
+        spinEnabled = !spinEnabled;
+        e.target.innerHTML = spinEnabled ? 'Pause rotation' : 'Start rotation';
+        if (!spinEnabled) map.stop();
+      });
+  
+      spinGlobe();
+    });
+  </script>
+  
+
+</body>
+</html>
